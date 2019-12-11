@@ -1,0 +1,135 @@
+SSO implementations:
+  Setting your own SSO server with Spring Boot and Spring Security OAuth:
+
+	1.app1 and aap2 will be the two applications using SSO.
+	2.sso-server will be the centeralized login system.
+	   When user will try to login into app1 or app2 they will be redirected to the sso-server
+	   
+  Enable authorization server:
+    -To make a Spring Boot application act as an authorization server you have to mark it with @EnableAuthorizationServer annotation.
+    1.This annotation imports two configuration classes —	
+	   AuthorizationServerEndpointsConfiguration and AuthorizationServerSecurityConfiguration.
+	2.The AuthorizationServerEndpointsConfiguration configuration class create beans for three REST controllers — AuthorizationEndpoint,
+	  TokenEndpoint, and CheckTokenEndpoint. These three controllers provide implementations for endpoints specified in OAuth2 specification.   
+	3.The AuthorizationServerSecurityConfiguration configuration class configures Spring Security for OAuth endpoints. 
+	
+  Configure Spring Security for login	
+    >To do Spring Security update the SsoServerApplication as shown below.
+	
+				@EnableAuthorizationServer
+				@SpringBootApplication
+				public class SsoServerApplication {
+				 
+					public static void main(String[] args) {
+					SpringApplication.run(SsoServerApplication.class, args);
+					}
+					 
+					@Configuration
+					protected static class LoginConfig extends WebSecurityConfigurerAdapter {
+					 
+					@Override
+					protected void configure(HttpSecurity http) throws Exception {
+					http.requestMatchers()
+					.antMatchers("/login", "/oauth/authorize")
+					.and()
+					.authorizeRequests()
+					.anyRequest().authenticated()
+					.and()
+					.formLogin().permitAll();
+					}
+					 
+					@Override
+					protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+					auth.inMemoryAuthentication()
+					.withUser("user")
+					.password("password")
+					.roles("USER");
+					}
+					}
+				}
+	>In the LoginConfig shown above, we are explicitly saying that we want to use this security 
+	  configuration for only two URLs /login and /oauth.authorize. All other urls will remain unaffected.
+
+  Create OAuth2Config:
+   >Create a new static inner class OAuth2Config to specify OAuth2 configuration as shown below.
+
+			@Configuration
+			@EnableAuthorizationServer
+			protected static class OAuth2Config extends AuthorizationServerConfigurerAdapter {
+				@Autowired
+				private AuthenticationManager authenticationManager;
+
+				@Override
+				public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+					clients.inMemory()
+							.withClient("foo")
+							.secret("bar")
+							.authorizedGrantTypes("authorization_code", "refresh_token", "password")
+							.scopes("user_info")
+							.autoApprove(true);
+				}
+
+				@Override
+				public void configure(AuthorizationServerSecurityConfigurer oauthServer) throws Exception {
+					oauthServer
+							.tokenKeyAccess("permitAll()")
+							.checkTokenAccess("isAuthenticated()");
+				}
+
+				@Override
+				public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+					endpoints.authenticationManager(authenticationManager);
+				}
+			}  
+  Set a different context root:
+    >In sso-server project application.properties set the context root of the application as shown below.
+        server.context-path=/sso-server
+
+Create app1 client application:
+    >Create our client app app1 which will be using the SSO server for login along with spring web and cloud oauth2.
+    >Update client app after adding following dependencies-
+	  <dependency>
+        <groupId>org.thymeleaf.extras</groupId>
+        <artifactId>thymeleaf-extras-springsecurity4</artifactId>
+      </dependency>
+	  
+	>Enabling SSO  
+	   -To enable SSO, we have to annotate our application class with @EnableOAuth2Sso annotation.
+	   
+	>we need to tell where to find SSO server. Create new file application.yml and define following configuration.  
+        server:
+			port: 8082
+			context-path: /app1
+		security:
+		  basic:
+			enabled: false
+		  oauth2:
+			client:
+			  clientId: foo
+			  clientSecret: bar
+			  accessTokenUri: http://localhost:8080/sso-server/oauth/token
+			  userAuthorizationUri: http://localhost:8080/sso-server/oauth/authorize
+			resource:
+			  userInfoUri: http://localhost:8080/sso-server/user/me	
+			  
+	>Create index.html
+       <h1 th:text="'Welcome to App1, ' + ${#authentication.name}"></h1>	
+	   
+	    @SpringBootApplication
+		@EnableOAuth2Sso
+		public class App1Application extends WebMvcConfigurerAdapter {
+		 
+		@Override
+		public void addViewControllers(ViewControllerRegistry registry) {
+		registry.addViewController("/").setViewName("index");
+		}
+		 
+		public static void main(String[] args) {
+		SpringApplication.run(App1Application.class, args);
+		}
+		}
+		
+	>SSO in action:
+      -Start both the applications. Go to http://localhost:8082/app1. You will be redirected to http://localhost:8080/sso-server/login.	
+	   
+       	
