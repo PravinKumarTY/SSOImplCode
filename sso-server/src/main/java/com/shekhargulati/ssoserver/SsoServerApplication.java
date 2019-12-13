@@ -55,8 +55,8 @@ public class SsoServerApplication {
         @Override
         public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
             clients.inMemory()
-                    .withClient("foo")
-                    .secret("bar")
+                    .withClient("pravin")
+                    .secret("pravin123")
                     .authorizedGrantTypes("authorization_code", "refresh_token", "password")
                     .scopes("user_info")
                     .autoApprove(true);

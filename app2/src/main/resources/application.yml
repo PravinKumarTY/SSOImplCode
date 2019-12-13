@@ -1,5 +1,5 @@
 server:
-    port: 8082
+    port: 8083
 security:
   basic:
     enabled: false
@@ -11,3 +11,4 @@ security:
       userAuthorizationUri: http://localhost:8080/sso/oauth/authorize
     resource:
       userInfoUri: http://localhost:8080/sso/user
+
