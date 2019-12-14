@@ -1,0 +1,16 @@
+Junit-5(Jupitor):
+   jar:
+     jupitor-junit-api
+	 jupitor-junit-engine
+   dependencies:
+     jupitor-junit-api-5.5.2
+	 jupitor-junit-engine-5.5.2 
+	 
+	 Annotaions:
+	  @Test:To make method Test.
+	  @BeforeEach:
+	  @AftreEach:
+	  @BeforeAll:only for static method
+	  @AfterAll:
+	  
+     	
